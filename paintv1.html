@@ -1,0 +1,462 @@
+
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"   "http://www.w3.org/TR/html4/loose.dtd">
+
+
+
+<html lang="fr">
+
+
+
+	<head>
+		<meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+		<title>Paint</title>
+		
+	
+	</head>
+	
+
+
+	<body>
+
+<table border="1">
+	<tr align="center">
+		<td>
+			<h1>Tools</h1>
+		</td>
+		<td>
+			<h1>Paint</h1>
+		</td>
+	</tr>
+
+	<tr>
+		<td style='border-style:solid;width:150px;height:500px;'>	
+
+			<div onclick="setMaterial(event)" style='border-style:solid;width:150px;height:160px;'>
+				
+				<h3><u>Materials</u></h3>
+				 <input type="radio" name="material" id="select" checked> Select<br>
+				 <input type="radio" name="material" id="pencil" checked> Pencil<br>
+ 				 <input type="radio" name="material" id="line"> Line<br>
+  				 <input type="radio" name="material" id="rectangle"> Rectangle<br>
+  				 <input type="radio" name="material" id="circle"> Circle
+
+			</div>		
+
+			<div style='border-style:solid;width:150px;height:190px;'>
+				
+				<h3><u>Options</u></h3>
+
+				<table onclick="setColor(event)">
+					
+					<tr>
+						<td id="black" style="background-color:black;color:white">Black</td>
+						<td id="green" style="background-color:green;color:white">Green</td>
+						<td id="purple" style="background-color:purple;color:white">Purple</td>						
+					</tr>
+
+					<tr>
+						<td id="blue" style="background-color:blue;color:white">Blue</td>
+						<td id="red" style="background-color:red;color:white">Red</td>
+						<td id="orange" style="background-color:orange;color:white">Orange</td>						
+					</tr>
+
+					<tr style="color:black;">
+						<td id="pink" style="background-color:pink;">Pink</td>
+						<td id="yellow" style="background-color:yellow;">Yellow</td>
+						<td id="white" style="background-color:white;border-style: solid;">White</td>						
+					</tr>
+
+					Thickness: <br>
+ 			 		<input onkeyup="setThickness(event)" type="json" id="thickness" style="width:70px;">
+
+
+
+				</table>
+
+
+
+			</div>		
+
+			<div style='width:150px;height:150px;'>
+				
+				    <button onclick="undo()"> Undo[U] </button>
+				    <button onclick="redo()"> Redo[R] </button><br><br>
+				    <button onclick="download()">Save</button>
+				    <input  id="file" type="file" />
+					<button onclick="init()"> Clear</button>
+
+			</div>	
+
+		</td>
+
+		<td style='border-style:solid;width:1000px;height:500px;'>
+				<canvas style="z-index: 2; position:absolute;" id="game" width="1000px" height="500px"></canvas>	
+				<canvas  style="z-index: 3; position:relative;" id="tmp" width="1000px" height="500px"></canvas> 
+		</td>
+	</tr>
+
+</table>
+
+
+
+		<script type="text/javascript">
+
+		var ctxGame = document.getElementById("game").getContext("2d");	 
+		var ctxTemp = document.getElementById("tmp").getContext("2d");	 
+
+
+		var panelWidth=1000;
+		var panelHeight=500;
+
+		var paint;  
+		var obj; 
+		var id; 
+		var objList;
+		var redoTab; 
+		var tabtmpX; 
+		var tabtmpY; 
+
+		var color; 
+		var material;
+		var thickness; 
+
+
+ 		window.onload = init();
+
+
+
+
+
+
+
+		function init(){
+
+				id=0; 	
+				redoTab=[]; 		
+				objList=[]; 
+				tabtmpX=[]; 
+				tabtmpY=[]; 
+				thickness = 10; 
+				color = "black"; 
+				material = "pencil"
+				document.getElementById("pencil").checked=true;
+
+			 ctxGame.clearRect(0, 0, 1000, 500);
+			 ctxTemp.clearRect(0, 0, 1000, 500);
+
+		}
+
+
+		function download() {
+		    var a = document.createElement("a");
+            document.body.appendChild(a);
+		    var json = JSON.stringify(objList);
+		    var file = new Blob([json], {type: "application/json"});
+		    a.href = URL.createObjectURL(file);
+		    a.download = "save.json";
+		    a.click();
+		}
+
+
+
+
+
+
+		function setColor(event){
+			color = event.target.id; 
+		}
+
+		function setMaterial(event){
+			material = event.target.id; 
+		}
+
+		function setThickness(event){
+
+			tmp = event.target.value; 
+			isNaN(tmp) ? false : thickness= tmp ; 
+		}
+
+
+
+		function geobject(id,material,color,thickness) {
+
+			this.id=id; 
+			this.material=material; 
+			this.color=color; 
+			this.thickness=thickness; 
+
+			this.clickX=[]; 
+			this.clickY=[]; 
+
+
+			geobject.prototype.addClick = function(offsetX,offsetY){
+				this.clickX.push(offsetX); 
+				this.clickY.push(offsetY); 
+			}
+
+		}
+
+
+
+		function drawPencil(obj,imported){
+
+			imported ? true : obj.addClick(tabtmpX[tabtmpX.length-1],tabtmpY[tabtmpY.length-1]);
+
+			ctxTemp.clearRect(0, 0, 1000, 500);
+
+		 	ctxGame.beginPath();
+			ctxGame.strokeStyle=obj.color;
+			ctxGame.lineWidth=obj.thickness;
+	        ctxGame.lineJoin = "round";
+			ctxGame.moveTo(obj.clickX[obj.clickX.length-2],obj.clickY[obj.clickY.length-2]);
+	        ctxGame.lineTo(obj.clickX[obj.clickX.length-1],obj.clickY[obj.clickY.length-1]);
+	        ctxGame.closePath(); 
+	        ctxGame.stroke();
+
+
+		}
+
+
+		function drawLine(obj,imported){
+
+
+			var firstX = obj.clickX[0];
+			var firstY = obj.clickY[0];
+			var lastX = (imported ? obj.clickX[1] : tabtmpX[tabtmpX.length-1]);
+			var lastY = (imported ? obj.clickY[1] : tabtmpY[tabtmpY.length-1]);
+
+
+
+			ctxGame.beginPath();
+			ctxGame.strokeStyle=obj.color;
+			ctxGame.lineWidth=obj.thickness;
+			ctxGame.moveTo(firstX,firstY);
+	        ctxGame.lineTo(lastX,lastY);
+			ctxGame.closePath();
+			imported ? ctxGame.stroke() : false ;
+
+			if (!imported){
+			ctxTemp.clearRect(0, 0, 1000, 500);
+		   	ctxTemp.beginPath();
+			ctxTemp.strokeStyle=obj.color;
+			ctxTemp.lineWidth=obj.thickness;
+			ctxTemp.moveTo(firstX,firstY);
+	        ctxTemp.lineTo(lastX,lastY);
+			ctxTemp.closePath();			
+		    ctxTemp.stroke();
+			}
+
+		}
+
+
+		function drawRectangle(obj,imported){
+
+
+			var firstX = obj.clickX[0];
+			var firstY = obj.clickY[0];
+			var lastX = (imported ? obj.clickX[1] : tabtmpX[tabtmpX.length-1]-obj.clickX[0]); 
+			var lastY = (imported ? obj.clickY[1] : tabtmpY[tabtmpY.length-1]-obj.clickY[0]); 
+
+			ctxGame.beginPath();
+			ctxGame.strokeStyle=obj.color;
+			ctxGame.lineWidth=obj.thickness;
+			ctxGame.rect(firstX,firstY,lastX,lastY);
+			ctxGame.closePath();	
+			imported ? ctxGame.stroke() : false ;
+
+			if (!imported){
+			ctxTemp.clearRect(0, 0, 1000, 500);
+			ctxTemp.beginPath();
+			ctxTemp.strokeStyle=obj.color;
+			ctxTemp.lineWidth=obj.thickness;
+			ctxTemp.rect(firstX,firstY,lastX,lastY);
+			ctxTemp.closePath();	
+		    ctxTemp.stroke();
+
+		    tabtmpX[tabtmpX.length-1] = tabtmpX[tabtmpX.length-1]-obj.clickX[0]; 
+		    tabtmpY[tabtmpY.length-1] = tabtmpY[tabtmpY.length-1]-obj.clickY[0]; 
+
+			}
+
+			
+
+		}
+
+		function drawCircle(obj,imported){
+
+			var firstX = obj.clickX[0];
+			var firstY = obj.clickY[0];
+			var lastX =  (imported ? obj.clickX[1]+obj.clickY[1] :  Math.abs(tabtmpX[tabtmpX.length-1]-obj.clickX[0]) + Math.abs(tabtmpY[tabtmpY.length-1]-obj.clickY[0]) ); 
+
+
+			ctxGame.beginPath();
+			ctxGame.strokeStyle=obj.color;
+			ctxGame.lineWidth=obj.thickness;
+			ctxGame.arc(firstX,firstY,lastX,0,2*Math.PI);
+			ctxGame.closePath();	
+			imported ? ctxGame.stroke() : false ;
+
+			if (!imported){
+			ctxTemp.clearRect(0, 0, 1000, 500);
+			ctxTemp.beginPath();
+			ctxTemp.strokeStyle=obj.color;
+			ctxTemp.lineWidth=obj.thickness;
+			ctxTemp.arc(firstX,firstY,lastX,0,2*Math.PI);
+			ctxTemp.closePath();	
+			ctxTemp.stroke();
+
+		    tabtmpX[tabtmpX.length-1] = Math.abs(tabtmpX[tabtmpX.length-1]-obj.clickX[0]); 
+		    tabtmpY[tabtmpY.length-1] = Math.abs(tabtmpY[tabtmpY.length-1]-obj.clickY[0]); 
+
+			}
+
+
+		}
+
+
+
+		function draw(obj,imported){
+
+
+
+			switch(obj.material) {
+			    case "pencil":
+			        drawPencil(obj,imported); 
+			        break;
+			    case "line":
+					drawLine(obj,imported); 
+			        break;
+			    case "rectangle":
+					drawRectangle(obj,imported); 
+				    break;
+				case "circle":
+					drawCircle(obj,imported); 
+				    break;
+				}
+
+
+		} 
+
+		function undo(){
+
+				redoTab.push(objList.pop()); 
+				refresh(objList); 
+
+		}
+
+
+		function redo(){
+
+				if (redoTab.length!=0) {
+				objList.push(redoTab.pop()); 
+				refresh(objList); 
+			}
+
+		}
+
+
+		function boolFill(pageX, pageY){
+
+			if (pageX>180 && pageY>110 && pageX<1180 && pageY<610){ return true ; 	} else  { return false; }
+		}
+
+
+		function refresh(objListTmp){
+
+				objList=[]; 
+				ctxGame.clearRect(0, 0, 1000, 500);
+
+				for (var i =0;i<objListTmp.length;i++) {
+
+					obj = new geobject(id++,objListTmp[i].material,objListTmp[i].color,objListTmp[i].thickness);
+
+					for (var j =0;j<objListTmp[i].clickX.length;j++) {
+						obj.clickX.push(objListTmp[i].clickX[j]);
+						obj.clickY.push(objListTmp[i].clickY[j]);
+						obj.material=="pencil" ? draw(obj,true) : false;
+
+					}
+
+					obj.material=="pencil" ? true : draw(obj,true) ;	
+
+					objList.push(obj);					
+				}
+
+		}
+
+
+
+	document.addEventListener("mousedown", function(e) {
+		console.log("PageX : " + e.pageX);
+		console.log("PageY : " + e.pageY);
+		if(boolFill(e.pageX,e.pageY))
+		{
+		  obj = new geobject(id++,material,color,thickness);
+		  obj.addClick(e.offsetX, e.offsetY); 
+
+		  tabtmpX=[]; 
+		  tabtmpY=[]; 
+		  tabtmpX.push(e.offsetX); 
+		  tabtmpY.push(e.offsetY); 
+
+		  paint = true;
+		  draw(obj,false);
+
+		}
+
+
+		});
+
+
+
+	document.addEventListener("mousemove", function(e) {
+
+		if(paint && boolFill(e.pageX,e.pageY) ){
+		  tabtmpX.push(e.offsetX); 
+		  tabtmpY.push(e.offsetY); 
+		  draw(obj,false);
+		}
+
+		});
+
+
+	document.addEventListener("mouseleave", function(e) {
+			paint=false; 
+		});
+
+	document.addEventListener("mouseup", function(e) {
+
+		if (paint==true){ redoTab=[];  obj.addClick(tabtmpX[tabtmpX.length-1], tabtmpY[tabtmpY.length-1]);  objList.push(obj);  ctxGame.stroke();  console.log(objList); }
+			paint=false; 
+
+
+		});
+
+
+	var fileInput = document.querySelector('#file');
+	fileInput.addEventListener('change', function() {
+
+
+			var reader = new FileReader();
+			reader.readAsText(fileInput.files[0]);
+	        reader.addEventListener('load', function() {
+
+				var data = JSON.parse(reader.result);
+				init();
+
+				refresh(data); 
+
+	       });
+	       
+	        
+	    });
+
+
+
+		</script>
+
+	</body>
+
+</html>
+

@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Paint</title>
+		<meta charset = "UTF-8">
+		<meta name="author" content="Jean-Pierre MOHAMED & Ludovic GAYET">
+		<style>
+			.titleCanvas, .titleTools{
+				text-align : center;
+			}
+			.cellCanvas{
+				height : 550px;
+				width : 600px;
+			}
+
+			.cellTools{
+			}
+			table{
+				height : 600px;
+				width : 800px;
+				margin : auto;
+			}
+			#tableColor{
+				height : 80px;
+				width : 180px;
+			}
+			table, td, th{
+				border: 1px solid gray;
+			}
+			body{
+				margin : 0 auto;
+			}
+			h1{
+				text-align : center;
+			}
+			h2{
+				text-align : center;
+			}
+		</style>
+	</head>
+	
+	<body>
+	
+		<h1>Paint</h1>
+		<h2>Designed by Jean-Pierre MOHAMED & Ludovic GAYET</h2>
+		
+		<table id="general">
+			<tr>
+				<td class="titleCanvas" id="titleCanvas"> Canvas </td>
+				<td class="titleTools" id="titleTools"> Tools </td>
+			</tr>
+			<tr>
+				<td class="cellCanvas" id="cellCanvas" rowspan="4">
+					<canvas style="z-index: 2; position:absolute;" id="myCanvas" width="600px" height="550px"></canvas>	
+					<canvas  style="z-index: 3; position:relative;" id="myCanvasTemp" width="600px" height="550px"></canvas>
+				</td>
+				<td class="cellTools" id ="cellTools">
+					<div id = "divTool" onClick = "setTool(event)">
+					<br><br>
+						<input type="radio" name="tool" id="select" value="select" align="left"> Select<br>
+ 						<input type="radio" name="tool" id="pen" value="pencil" align="left"> Pencil<br>
+                        <input type="radio" name="tool" id="line" value="line"> Line<br>
+                        <input type="radio" name="tool" id="rect" value="rectangle"> Rectangle<br>
+						<input type="radio" name="tool" id="cycle" value="cycle"> Cycle<br><br>
+					</div>
+						<b>Color</b><br>
+						<table id="tableColor" onClick="setColor(event)">
+						<tr>
+							<td id="black" style="background-color:black;"></td>
+							<td id="blue" style="background-color:blue;"></td>
+							<td id="red" style="background-color:red;"></td>
+						</tr>
+						<tr style="color:black;">
+							<td id="yellow" style="background-color:yellow;"></td>
+							<td id="green" style="background-color:green;"></td>
+							<td id="orange" style="background-color:orange;"></td>
+						</tr>
+						<tr style="color:black;">
+							<td id="pink" style="background-color:pink;"></td>
+							<td id="purple" style="background-color:purple;"></td>
+							<td id="brown" style="background-color:brown;"></td>
+						</tr>
+						</table>
+						<br><br>
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<b>Thickness</b>
+					<input type="text" name="thickness" onkeyup="setThickness(event)" type="json" id="thickness" value="10"><br>
+					<button type="button" id="moins" onclick = "downThickness()">-</button> <button type="button" id="plus" onclick="upThickness()">+</button>
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<br>
+					<button type="button" id="clear" onclick="init()">Clear</button>
+					<button type="button" id="undo" onclick="undo()">Undo</button>
+					<button type="button" id="redo" onclick="redo()">Redo</button><br>
+					<br>
+				</td>
+			</tr>
+			<tr>
+				<td>
+					<input type="text" name="load" type="json" id="loadText" >
+					<button type="button" id="load" onclick="loadXML()">Load</button>	
+				</td>
+			</tr>
+		
+		</table>
+
+		<div>
+			<p id="paragrapheXML"> </p>
+		</div>
+		
+		<script type="text/javascript">
+		
+		var ctx = document.getElementById("myCanvas").getContext("2d");
+		var ctxTemp = document.getElementById("myCanvasTemp").getContext("2d");
+		
+		//Récupère la dimention du tableau
+		var canvasWidht = document.getElementById("myCanvas").width;
+		var canvasHeight = document.getElementById("myCanvas").height;
+		
+		// Variable pour XML
+		var tabXML ;
+		//Variables qui permettent le bon fonctionnement des fonctions 
+		var painted;
+		var object;
+		var id;
+		var listObject;
+		var listRedo;
+		
+		//Variable qui permet de faire l'historique
+		var tempX;
+		var tempY;
+		
+		//Permet de repérer le canvas dans la fenêtre
+		var left = document.getElementById("myCanvas").offsetLeft;
+		var right = left + canvasWidht;
+		var topp = document.getElementById("myCanvas").offsetTop;
+		var bot = topp + canvasHeight;
+		
+		
+		//Variable qu'on reprend dans le tableau des choix
+		var color = "black";
+		var colorTemp;
+		var tool;
+		var thickness = document.getElementById("thickness").value;
+		
+		//Choisir le type de tool
+		function setTool(event){
+			tool = event.target.id;
+			console.log(tool);
+		}
+		
+		function setColor(event){
+			 color = event.target.id; 
+			 console.log(color);
+		}
+		
+		function setThickness(event){
+			tmp = event.target.value; 
+			isNaN(tmp) ? false : thickness= tmp ; 
+		}
+		
+		function upThickness(){
+			var value = document.getElementById("thickness").value;
+			var result = parseInt(value) + 1;
+			thickness = result;
+			console.log(thickness);
+			document.getElementById("thickness").value = result;
+		}
+		
+		function downThickness(){
+			var value = document.getElementById("thickness").value;
+			var result = parseInt(value) - 1;
+			thickness = result;
+			console.log(thickness);
+			document.getElementById("thickness").value = result;
+		}
+		
+		window.onload = init();
+		
+		function init(){
+
+			console.log("canvasLeft : " + left);
+			console.log("canvasRight : " + right);
+			console.log("canvasTop : " + topp);
+			console.log("canvasTop : " + bot);
+			console.log("canvasWidht : " + canvasWidht);
+			console.log("canvasHeight : " + canvasHeight);
+			id = 0;
+			selected=-1;
+			colorTemp="black";
+			listObject=[];
+			listRedo=[];
+			tempX=[];
+			tempY=[];
+			tabXML = [];
+			thickness = 10;
+			tool = "pen";
+			document.getElementById("pen").checked = true;
+			ctx.clearRect(0, 0, canvasWidht, canvasHeight);
+			ctxTemp.clearRect(0, 0, canvasWidht, canvasHeight);
+			ecritureXML();
+		}
+		
+		
+		function object(id, tool, color, thickness){
+			this.id = id;
+			this.tool = tool;
+			this.color = color;
+			this.thickness = thickness;
+			
+			this.clickX=[];
+			this.clickY=[];
+			
+			object.prototype.addClick = function(offsetX, offsetY){
+				this.clickX.push(offsetX);
+				this.clickY.push(offsetY);
+			}
+		}
+		
+		function drawPencil(obj, imported){
+			imported ? true : obj.addClick(tempX[tempX.length-1],tempY[tempY.length-1]);			
+			
+			ctxTemp.clearRect(0, 0, 600, 550);
+			
+			ctx.beginPath();
+			//console.log(obj.color);
+			ctx.strokeStyle = obj.color;
+			ctx.lineWidth = obj.thickness;
+			ctx.lineJoin = "round";
+			ctx.moveTo(obj.clickX[obj.clickX.length-2], obj.clickY[obj.clickY.length-2]);
+			ctx.lineTo(obj.clickX[obj.clickX.length-1], obj.clickY[obj.clickY.length-1]);
+			ctx.closePath();
+			ctx.stroke();
+		}
+		
+		
+		function drawLine(obj,imported){
+			var firstX = obj.clickX[0];
+			var firstY = obj.clickY[0];
+			var lastX = (imported ? obj.clickX[1] : tempX[tempX.length-1]);
+			var lastY = (imported ? obj.clickY[1] : tempY[tempY.length-1]);
+			
+			ctx.beginPath();
+			ctx.strokeStyle=obj.color;
+			ctx.lineWidth=obj.thickness;
+			ctx.moveTo(firstX,firstY);
+	        ctx.lineTo(lastX,lastY);
+			ctx.closePath();
+			imported ? ctx.stroke() : false ;
+
+			if (!imported){
+				ctxTemp.clearRect(0, 0, 600, 550);
+				ctxTemp.beginPath();
+				ctxTemp.strokeStyle=obj.color;
+				ctxTemp.lineWidth=obj.thickness;
+				ctxTemp.moveTo(firstX,firstY);
+				ctxTemp.lineTo(lastX,lastY);
+				ctxTemp.closePath();			
+				ctxTemp.stroke();
+			}
+
+		}	
+
+		function drawRectangle(obj,imported){
+			var firstX = obj.clickX[0];
+			var firstY = obj.clickY[0];
+			var lastX = (imported ? obj.clickX[1] : tempX[tempX.length-1]-obj.clickX[0]); 
+			var lastY = (imported ? obj.clickY[1] : tempY[tempY.length-1]-obj.clickY[0]); 
+
+			ctx.beginPath();
+			ctx.strokeStyle=obj.color;
+			ctx.lineWidth=obj.thickness;
+			ctx.rect(firstX,firstY,lastX,lastY);
+			ctx.closePath();	
+			imported ? ctx.stroke() : false ;
+
+			if (!imported){
+				ctxTemp.clearRect(0, 0, 600, 550);
+				ctxTemp.beginPath();
+				ctxTemp.strokeStyle=obj.color;
+				ctxTemp.lineWidth=obj.thickness;
+				ctxTemp.rect(firstX,firstY,lastX,lastY);
+				ctxTemp.closePath();	
+				ctxTemp.stroke();
+
+				tempX[tempX.length-1] = tempX[tempX.length-1]-obj.clickX[0]; 
+				tempY[tempY.length-1] = tempY[tempY.length-1]-obj.clickY[0]; 
+			}
+		}		
+		
+		function drawCircle(obj,imported){
+			var firstX = obj.clickX[0];
+			var firstY = obj.clickY[0];
+			//var lastX =  (imported ? parseInt(obj.clickX[1])-obj.clickX[0] + parseInt(obj.clickY[1]) -obj.clickY[0]:  Math.abs(tempX[tempX.length-1]-obj.clickX[0]) + Math.abs(tempY[tempY.length-1]-obj.clickY[0]) ); 
+			var lastX = (imported ? obj.clickX[1]+obj.clickY[1] : Math.abs(tempX[tempX.length-1]-obj.clickX[0]) + Math.abs(tempY[tempY.length-1]-obj.clickY[0]));
+
+			ctx.beginPath();
+			ctx.strokeStyle=obj.color;
+			ctx.lineWidth=obj.thickness;
+			ctx.arc(firstX,firstY,lastX,0,2*Math.PI);
+			ctx.closePath();	
+			imported ? ctx.stroke() : false ;
+
+			if (!imported){
+				ctxTemp.clearRect(0, 0, 600, 550);
+				ctxTemp.beginPath();
+				ctxTemp.strokeStyle=obj.color;
+				ctxTemp.lineWidth=obj.thickness;
+				ctxTemp.arc(firstX,firstY,lastX,0,2*Math.PI);
+				ctxTemp.closePath();	
+				ctxTemp.stroke();
+
+				tempX[tempX.length-1] = Math.abs(tempX[tempX.length-1]-obj.clickX[0]); 
+				tempY[tempY.length-1] = Math.abs(tempY[tempY.length-1]-obj.clickY[0]); 
+
+			}
+		}
+		
+		
+		function draw(obj, imported){
+			switch(obj.tool) {
+				case "select":
+					select();
+					break;
+			    case "pen":
+			        drawPencil(obj, imported); 
+			        break;
+			    case "line":
+					drawLine(obj, imported); 
+			        break;
+			    case "rect":
+					drawRectangle(obj, imported); 
+				    break;
+				case "cycle":
+					drawCircle(obj, imported); 
+				    break;
+			}
+		} 
+		
+		function overflow(pageX, pageY){
+			if (pageX>left && pageY>topp && pageX<right && pageY<bot){
+				//console.log("dedans");
+				return true;
+			} else {
+				//console.log("dehors");
+				return false;
+			}
+		}
+		
+		document.addEventListener("mousedown", function(e) {
+			console.log("Page X : " + e.pageX);
+			console.log("Page Y : " + e.pageY);
+			if(overflow(e.pageX, e.pageY))
+			{
+				if(tool != "select"){
+					obj = new object(id++, tool, color, thickness);
+					obj.addClick(e.offsetX, e.offsetY);
+					
+					tempX=[];
+					tempY=[];
+					tempX.push(e.offsetX);
+					tempY.push(e.offsetY);
+					
+					painted = true;
+					draw(obj, false);
+				}
+				else {
+					if(ctx.getImageData(e.offsetX, e.offsetY, 1, 1).data[3]>0){
+						select(e.offsetX,e.offsetY);
+					}
+					else if(selected!=-1) {
+						listObject[selected].color = colorTemp;
+						listObject[selected].thickness = parseInt(listObject[selected].thickness) - 10;
+						selected=-1;
+						refresh(listObject);
+					}
+				}
+
+			}
+		});
+
+		document.addEventListener("mousemove", function(e) {
+			if(painted && overflow(e.pageX,e.pageY)){
+				tempX.push(e.offsetX); 
+				tempY.push(e.offsetY); 
+				draw(obj, false);
+			}
+			else if(selected!=-1 && overflow(e.pageX, e.pageY)){
+				if(listObject[selected].tool!="line"){
+					listObject[selected].clickX[0]=e.offsetX;
+					listObject[selected].clickY[0]=e.offsetY;
+				}
+				else{
+					listObject[selected].clickX[1]=e.offsetX+listObject[selected].clickX[1]-listObject[selected].clickX[0];
+					listObject[selected].clickX[0]=e.offsetX;
+					
+					listObject[selected].clickY[1]=e.offsetY+listObject[selected].clickY[1]-listObject[selected].clickY[0];
+					listObject[selected].clickY[0]=e.offsetY;
+				}
+				
+				refresh(listObject);
+			}
+		});
+		
+		document.addEventListener("mouseleave", function(e) {
+			painted=false; 
+		});
+
+		document.addEventListener("mouseup", function(e) {
+			if (painted==true){
+				listRedo=[];
+				obj.addClick(tempX[tempX.length-1], tempY[tempY.length-1]);  
+				listObject.push(obj);  
+				ctx.stroke();  
+				console.log(listObject);	
+				ajouterXML(obj);
+				ecritureXML();
+			} 
+			
+			if(selected!=-1){
+				listObject[selected].color = colorTemp;
+				listObject[selected].thickness = parseInt(listObject[selected].thickness) - 10;
+				selected=-1;
+				refresh(listObject);
+				ctxTemp.clearRect(0, 0, 600, 500);
+			
+			}
+			painted=false; 
+		});	
+		
+		function refresh(listObjectEntry){
+			id=0;
+			listObject=[];
+			ctx.clearRect(0, 0, 600, 550);
+			ctxTemp.clearRect(0, 0, 600, 550);
+			
+			for(var i=0; i<listObjectEntry.length; i++) {
+				obj = new object(id++, listObjectEntry[i].tool, listObjectEntry[i].color, listObjectEntry[i].thickness);
+				
+				for(var j=0; j<listObjectEntry[i].clickX.length; j++) {
+					obj.clickX.push(listObjectEntry[i].clickX[j]);
+					obj.clickY.push(listObjectEntry[i].clickY[j]);
+					obj.tool=="pen" ? draw(obj, true) : false;
+				}
+				
+				obj.tool=="pen" ? true : draw(obj, true);
+				
+				listObject.push(obj);
+			}
+		}
+		
+		
+		function undo(){
+			//La condition permet de ne pas prendre plus d'objet qu'il en existe
+			if(listObject.length!=0){
+				listRedo.push(listObject.pop());
+				refresh(listObject);
+				console.log(listRedo);
+				console.log(listObject);
+				console.log(tabXML);
+				for(var i=tabXML.length-1; i>=0; i--) {
+					if (tabXML[i].indexOf('point')!==-1 || tabXML[i].indexOf('action  /&gt;')!==-1) {
+						tabXML.pop();
+					}
+					else {
+						break;
+					}
+				}
+				tabXML.pop();
+				console.log(tabXML);
+				ecritureXML();
+			}
+		}
+		
+		function redo(){
+			if(listRedo.length!=0) {
+				var temp = listRedo.pop()
+				listObject.push(temp);
+				refresh(listObject);
+				console.log(listRedo);
+				console.log(listObject);
+				ajouterXML(temp);
+				ecritureXML();
+			}
+		}
+
+
+
+		function ecritureXML() {
+			var entete = '&lt;picture&gt; <br>';
+			var fin = '&lt;/picture&gt;';
+			document.getElementById("paragrapheXML").innerHTML = entete;
+			for (var i in tabXML){
+				document.getElementById("paragrapheXML").innerHTML += tabXML[i];
+			}
+			document.getElementById("paragrapheXML").innerHTML += fin;
+		}
+
+		function ajouterXML (objetAEcrire) {
+			var firstX = obj.clickX[0];
+			var firstY = obj.clickY[0];
+			var lastX = obj.clickX[obj.clickX.length-1];
+			var lastY = obj.clickY[obj.clickX.length-1];
+			if (objetAEcrire.tool=="circle") {
+				lastX += firstX;
+				lastY += firstY;
+				tabXML[tabXML.length] = '&lt;action type="'+ objetAEcrire.tool + '" startX="' +firstX+ '" startY="' +firstY+ '" strokeStyle="'+objetAEcrire.color + '" lineWidth="' +objetAEcrire.thickness+ '" endX="' +lastX+ '" endY="' +lastY+'" /&gt; <br>';
+			} else if (objetAEcrire.tool=="pen") {
+				lastX += firstX;
+				lastY += firstY;
+				tabXML[tabXML.length] = '&lt;action type="'+ objetAEcrire.tool + '" startX="' +firstX+ '" startY="' +firstY+ '" strokeStyle="'+objetAEcrire.color + '" lineWidth="' +objetAEcrire.thickness+ '" /&gt; <br>';
+				for(var i=0; i<obj.clickX.length; i++) {
+					tabXML[tabXML.length] = '&lt;point index="'+ i + '" X="' +obj.clickX[i]+ '" Y="' +obj.clickY[i]+ '"  /&gt; <br>';
+				}
+				tabXML[tabXML.length] = '&lt;action  /&gt; <br>';
+			}
+
+			else {
+				tabXML[tabXML.length] =  '&lt;action type="'+ objetAEcrire.tool + '" startX="' +firstX+ '" startY="' +firstY+ '" strokeStyle="'+objetAEcrire.color + '" lineWidth="' +objetAEcrire.thickness+ '" endX="' +lastX+ '" endY="' +lastY+'" /&gt; <br>';
+			}
+			
+		}
+
+		function loadXML() {
+            if (loadText.value!="") {
+                xhttp = new XMLHttpRequest();
+                xhttp.open("GET",loadText.value,false);
+                xhttp.send();
+                //alert(xhttp.responseText);
+                var tableau = (xhttp.responseText).split("\n");
+                for (var i=0; i<tableau.length; i++) {
+                	
+                        if (tableau[i].indexOf("/action")!==-1) {
+                                listObject.push(obj);
+                                 draw(obj,true);
+                                 ajouterXML(obj);
+                                 ecritureXML();
+                        }
+                        
+                        
+                        
+                        if (tableau[i].indexOf("type=")!==-1) {
+                             var type = tableau[i].substring(tableau[i].indexOf("type=")+"type=\"".length , tableau[i].indexOf("\"",tableau[i].indexOf("type=")+"type=\"".length));
+                             var strokeStyle = tableau[i].substring(tableau[i].indexOf("strokeStyle=")+"strokeStyle=\"".length , tableau[i].indexOf("\"",tableau[i].indexOf("strokeStyle=")+"strokeStyle=\"".length));
+                             var lineWidth = tableau[i].substring(tableau[i].indexOf("lineWidth=")+"lineWidth=\"".length , tableau[i].indexOf("\"",tableau[i].indexOf("lineWidth=")+"lineWidth=\"".length));
+                             var startX = tableau[i].substring(tableau[i].indexOf("startX=")+"startX=\"".length , tableau[i].indexOf("\"",tableau[i].indexOf("startX=")+"startX=\"".length));
+                             var startY = tableau[i].substring(tableau[i].indexOf("startY=")+"startY=\"".length , tableau[i].indexOf("\"",tableau[i].indexOf("startY=")+"startY=\"".length));
+                             var endX = tableau[i].substring(tableau[i].indexOf("endX=")+"endX=\"".length , tableau[i].indexOf("\"",tableau[i].indexOf("endX=")+"endX=\"".length));
+                             var endY = tableau[i].substring(tableau[i].indexOf("endY=")+"endY=\"".length , tableau[i].indexOf("\"",tableau[i].indexOf("endY=")+"endY=\"".length));
+                             obj = new object(id++, type, strokeStyle, lineWidth);
+                            
+                    
+                            if (type!=="pen") {
+                                obj.addClick(startX, startY);
+                                obj.addClick(endX, endY);
+                                listObject.push(obj);
+                                draw(obj,true);
+                                ajouterXML(obj);
+                                ecritureXML();
+
+                            }
+                            else {
+                                obj.addClick(startX, startY);
+                                draw(obj,true);
+                            }
+
+
+                             
+                         }
+                         
+                         else if(tableau[i].indexOf("point")!==-1) {
+                             var X = tableau[i].substring(tableau[i].indexOf(" x=")+" x=\"".length , tableau[i].indexOf("\"",tableau[i].indexOf(" x=")+" x=\"".length));
+                             var Y = tableau[i].substring(tableau[i].indexOf("y=")+"y=\"".length , tableau[i].indexOf("\"",tableau[i].indexOf("y=")+"y=\"".length));
+                            obj.addClick(X, Y);
+                            draw(obj,true);
+                         }
+                         
+                }
+            }
+        }
+
+		function move(object){
+
+			if (selected!=-1){
+			
+				listObject[selected].color=colorTemp;
+				listObject[selected].thickness = parseInt(listObject[selected].thickness) - 10;
+
+
+			}
+
+			colorTemp = listObject[object].color; 
+
+			listObject[object].color="red"; 
+			
+			listObject[object].thickness = parseInt(listObject[object].thickness) + 10;
+
+			selected=object;
+
+			refresh(listObject); 
+
+		}
+
+		function onLenghtLine(obj,x,y){
+
+			if ( x<Math.max(obj.clickX[0],obj.clickX[1]) && x>Math.min(obj.clickX[0],obj.clickX[1]) && y<Math.max(obj.clickY[0],obj.clickY[1]) && y>Math.min(obj.clickY[0],obj.clickY[1]) )  {
+				return true; 
+			}
+			else {  
+				return false; 
+			}
+
+		}
+
+		function selectLine(object,obj,x,y){
+		
+			var intervalle = obj.thickness*1.5; 
+
+			//Permet de prendre en compte toute la ligne
+			var coeff = (obj.clickY[1]-obj.clickY[0])/(obj.clickX[1]-obj.clickX[0]);
+			var b =obj.clickY[0]-coeff*obj.clickX[0]; 
+
+			if(onLenghtLine(obj,x,y) &&  y > (coeff*x+b)-intervalle &&  y < (coeff*x+b)+intervalle) {  
+					move(object);
+			}
+		}
+
+		function onLenghtRectangle(obj,x,y){
+
+			if(x<Math.max(obj.clickX[0],obj.clickX[1]+obj.clickX[0]) && x>Math.min(obj.clickX[0],obj.clickX[1]+obj.clickX[0]) && y<Math.max(obj.clickY[0],obj.clickY[1]+obj.clickY[0]) && y>Math.min(obj.clickY[0],obj.clickY[1]+obj.clickY[0])) {
+				console.log("Dessus !");
+				return true; 
+			}
+			else { 
+				console.log("Pas dessus ...");
+				return false; 
+			}
+		}
+
+
+		function selectRectangle(object,obj,x,y){
+
+			var intervalle = obj.thickness*1.5; 
+			
+			//Si nous touchons une des côtés du rectangle, nous le déplaçons
+			if (onLenghtRectangle(obj,x,y) && ((y<obj.clickY[0]+intervalle && y>obj.clickY[0]-intervalle) || (y<obj.clickY[1]+obj.clickY[0]+intervalle && y>obj.clickY[1]+obj.clickY[0]-intervalle ) || (x<obj.clickX[0]+intervalle && x>obj.clickX[0]-intervalle) || (x<obj.clickX[1]+obj.clickX[0]+intervalle && x>obj.clickX[1]+obj.clickX[0]-intervalle))) {
+				move(object);
+			 }
+		}
+		
+		function selectPen(object, obj, x, y){
+			var pointX = obj.clickX;
+			var pointY = obj.clickY;
+			
+			for(var px in pointX){
+				for(var py in pointY){
+					if(x==pointX[px] && y==point[py]){
+						move(object);
+					}
+				}
+			}
+		}
+
+
+		function selectCircle(object,obj,x,y){
+		
+			var intervalle = obj.thickness*1.5; 
+
+			//Formule pour permettre de prendre tout le cercle
+			var formula = ((x-obj.clickX[0])*(x-obj.clickX[0]))+((y-obj.clickY[0])*(y-obj.clickY[0]));
+			var radius =  obj.clickX[1]+obj.clickY[1] ; 
+
+			if (Math.sqrt(formula)<radius+intervalle && Math.sqrt(formula)>radius-intervalle){
+				move(object);
+		  }
+		}
+
+		function select(x,y){
+
+			for(var object in listObject) { 
+				var obj = listObject[object]; 
+
+				switch(obj.tool) {
+				case "pen" :
+					selectPen(object, obj, x, y);
+					break;
+			    case "line":
+					selectLine(object,obj,x,y); 
+			        break;
+			    case "rect":
+					selectRectangle(object,obj,x,y); 
+				    break;
+				case "cycle":
+					selectCircle(object,obj,x,y); 
+				    break;
+				}
+
+			}
+
+		}
+		</script>
+	</body>
+</html>	
